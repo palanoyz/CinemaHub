@@ -1,0 +1,38 @@
+package auth
+
+import (
+	"context"
+	"log"
+	"os"
+
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/auth"
+	"google.golang.org/api/option"
+)
+
+var AuthClient *auth.Client
+
+func InitFirebase() {
+	projectID := os.Getenv("FIREBASE_PROJECT_ID")
+	serviceAccountPath := os.Getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
+
+	if projectID == "" || serviceAccountPath == "" {
+		log.Fatal("FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_PATH must be set in .env")
+	}
+
+	opt := option.WithCredentialsFile(serviceAccountPath)
+	config := &firebase.Config{ProjectID: projectID}
+	
+	app, err := firebase.NewApp(context.Background(), config, opt)
+	if err != nil {
+		log.Fatalf("error initializing firebase app: %v\n", err)
+	}
+
+	client, err := app.Auth(context.Background())
+	if err != nil {
+		log.Fatalf("error getting firebase auth client: %v\n", err)
+	}
+
+	AuthClient = client
+	log.Println("Firebase Admin SDK initialized successfully")
+}
