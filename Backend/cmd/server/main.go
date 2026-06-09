@@ -30,10 +30,12 @@ func init() {
 func main() {
 	// Initialize MongoDB
 	db := config.ConnectMongoDB()
+	// Initialize Redis
+	rdb := config.ConnectRedis()
 
 	router := gin.Default()
 
-	healthHandler := handler.NewHealthHandler(db)
+	healthHandler := handler.NewHealthHandler(db, rdb)
 	router.GET("/health", healthHandler.Check)
 
 	log.Println("Server starting on :8080")
