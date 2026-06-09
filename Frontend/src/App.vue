@@ -18,11 +18,14 @@ async function handleLogout() {
         <span class="logo">🎬</span>
         <span class="text">CinemaHub</span>
       </div>
-      
+
       <div v-if="authStore.user" class="user-info">
         <div class="profile">
-          <img v-if="authStore.user?.photoURL" :src="authStore.user.photoURL" alt="Profile" class="avatar" referrerpolicy="no-referrer" />
-          <div v-else class="avatar-placeholder">{{ authStore.user?.email?.[0]?.toUpperCase() || '?' }}</div>
+          <img v-if="authStore.user?.photoURL" :src="authStore.user.photoURL" alt="Profile" class="avatar"
+            referrerpolicy="no-referrer" />
+          <div v-else class="avatar-placeholder">
+            {{ authStore.user?.email?.[0]?.toUpperCase() || '?' }}
+          </div>
           <span class="email">{{ authStore.user?.email }}</span>
         </div>
         <button @click="handleLogout" class="logout-btn">Logout</button>
@@ -44,29 +47,7 @@ async function handleLogout() {
   </main>
 </template>
 
-<style>
-:root {
-  --primary-color: #e50914;
-  --text-main: #1a1a1a;
-  --text-muted: #666;
-  --bg-body: #f8f9fa;
-  --nav-height: 72px;
-}
-
-body {
-  margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  background-color: var(--bg-body);
-  color: var(--text-main);
-  -webkit-font-smoothing: antialiased;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
+<style scoped>
 .main-header {
   height: var(--nav-height);
   background-color: rgba(255, 255, 255, 0.9);
@@ -74,7 +55,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid var(--border-color);
 }
 
 nav {
@@ -99,8 +80,9 @@ nav {
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: -0.5px;
-  background: linear-gradient(45deg, #e50914, #ff4b5c);
+  background: linear-gradient(45deg, var(--primary-color), #ff4b5c);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -116,7 +98,8 @@ nav {
   gap: 10px;
 }
 
-.avatar, .avatar-placeholder {
+.avatar,
+.avatar-placeholder {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -143,10 +126,9 @@ nav {
   background: transparent;
   border: 1px solid #ddd;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 600;
-  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -155,8 +137,17 @@ nav {
   border-color: #ccc;
 }
 
+.login-btn {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+
 .loading-screen {
-  height: 100vh;
+  height: calc(100vh - var(--nav-height));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -174,6 +165,8 @@ nav {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
