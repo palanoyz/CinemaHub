@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/palanoyz/cinemahub/internal/config"
 	"context"
+	"github.com/palanoyz/cinemahub/internal/config"
 	"log"
 	"os"
 	"time"
@@ -31,7 +31,7 @@ func main() {
 	// Clean existing movies
 	moviesColl.DeleteMany(context.Background(), bson.M{})
 
-	movies := []interface{}{
+	movies := []any{
 		bson.M{
 			"title":       "The Super Mario Galaxy Movie",
 			"description": "Having thwarted Bowser's previous plot to marry Princess Peach, Mario and Luigi now face a fresh threat in Bowser Jr., who is determined to liberate his father from captivity and restore the family legacy. Alongside companions new and old, the brothers travel across the stars to stop the young heir's crusade.",
