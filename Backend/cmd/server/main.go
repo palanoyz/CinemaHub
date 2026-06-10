@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"cinemahub-backend/internal/auth"
 	"cinemahub-backend/internal/config"
 	"cinemahub-backend/internal/handler"
@@ -9,35 +8,21 @@ import (
 	"cinemahub-backend/internal/repository"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func init() {
-	// Simple .env loader
-	file, err := os.Open(".env")
-	if err == nil {
-		defer file.Close()
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			line := scanner.Text()
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) == 2 {
-				os.Setenv(parts[0], parts[1])
-			}
-		}
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system environment variables")
 	}
 }
 
 func main() {
-	// Initialize MongoDB
 	db := config.ConnectMongoDB()
-	// Initialize Redis
 	rdb := config.ConnectRedis()
-	// Initialize Firebase
 	auth.InitFirebase()
 
 	// Initialize Repositories

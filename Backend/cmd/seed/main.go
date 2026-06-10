@@ -1,31 +1,19 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"log"
 	"os"
-	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func init() {
-	file, err := os.Open(".env")
-	if err == nil {
-		defer file.Close()
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			line := scanner.Text()
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) == 2 {
-				os.Setenv(parts[0], parts[1])
-			}
-		}
-	}
+	godotenv.Load()
 }
 
 func main() {
