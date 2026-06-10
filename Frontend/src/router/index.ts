@@ -14,6 +14,18 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/movie/:id',
+      name: 'movie-detail',
+      component: () => import('../views/MovieDetailView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/booking/:showtimeId',
+      name: 'seat-selection',
+      component: () => import('../views/SeatSelectionView.vue'),
+      meta: { requiresAuth: true } // Must be logged in to pick seats
+    },
+    {
       path: '/login',
       name: 'login',
       component: LoginView
@@ -25,6 +37,7 @@ const router = createRouter({
     }
   ],
 })
+
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()

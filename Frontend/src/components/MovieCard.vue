@@ -21,15 +21,15 @@ defineProps<{
     <div class="info">
       <h3>{{ movie.title }}</h3>
       <div class="meta">
-        <span class="duration">
-          {{ movie.duration }} min
-        </span>
+        <span class="duration">{{ movie.duration }} min</span>
         <div class="genres-list">
           <span v-for="genre in movie.genre" :key="genre" class="genre-badge">{{ genre }}</span>
         </div>
       </div>
       <p class="description">{{ movie.description }}</p>
-      <button class="book-btn">Book Tickets</button>
+      <router-link :to="'/movie/' + movie.id" class="book-btn">
+        Book Tickets
+      </router-link>
     </div>
   </div>
 </template>
@@ -75,58 +75,50 @@ defineProps<{
 }
 
 .info {
-  padding: 12px;
+  padding: 20px;
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
 h3 {
-  margin: 0 0 4px;
-  font-size: 1rem;
+  margin: 0 0 8px;
+  font-size: 1.25rem;
   color: var(--text-main);
 }
 
 .meta {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .duration {
-  font-size: 0.75rem;
-  color: #666;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.icon {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
 }
 
 .genres-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
 }
 
 .genre-badge {
-  display: inline-block;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 2px 6px;
+  background: #f0f0f0;
+  color: var(--text-muted);
+  padding: 2px 8px;
   border-radius: 12px;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
 .description {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
-  line-height: 1.4;
-  margin-bottom: 12px;
+  line-height: 1.5;
+  margin-bottom: 20px;
   display: -webkit-box;
   line-clamp: 3;
   -webkit-line-clamp: 3;
@@ -139,11 +131,14 @@ h3 {
   background: var(--primary-color);
   color: white;
   border: none;
-  padding: 8px;
+  padding: 12px;
   border-radius: var(--radius-md);
   font-weight: 700;
-  font-size: 0.9rem;
   width: 100%;
+  text-decoration: none;
+  text-align: center;
+  display: block;
+  transition: background 0.2s;
 }
 
 .book-btn:hover {
