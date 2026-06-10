@@ -4,6 +4,7 @@ go 1.25.8
 
 require (
 	firebase.google.com/go/v4 v4.20.0
+	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/redis/go-redis/v9 v9.20.0
 	go.mongodb.org/mongo-driver/v2 v2.6.0

@@ -6,11 +6,13 @@ import (
 	"cinemahub-backend/internal/config"
 	"cinemahub-backend/internal/handler"
 	"cinemahub-backend/internal/middleware"
+	"cinemahub-backend/internal/repository"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -38,14 +40,31 @@ func main() {
 	// Initialize Firebase
 	auth.InitFirebase()
 
+	// Initialize Repositories
+	movieRepo := repository.NewMovieRepository(db.Database("cinemahub"))
+
+	// Initialize Handlers
+	healthHandler := handler.NewHealthHandler(db, rdb)
+	movieHandler := handler.NewMovieHandler(movieRepo)
+
 	router := gin.Default()
 
+	// CORS Middleware
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowCredentials: true,
+	}))
+
 	// Public routes
-	healthHandler := handler.NewHealthHandler(db, rdb)
 	router.GET("/health", healthHandler.Check)
 
+	api := router.Group("/api")
+	{
+		api.GET("/movies", movieHandler.List)
+	}
+
 	// Protected routes
-	protected := router.Group("/api")
+	protected := router.Group("/api/protected")
 	protected.Use(middleware.AuthMiddleware())
 	{
 		protected.GET("/me", func(c *gin.Context) {
