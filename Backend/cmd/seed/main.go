@@ -1,22 +1,19 @@
 package main
 
 import (
+	"cinemahub-backend/internal/config"
 	"context"
 	"log"
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-func init() {
-	godotenv.Load()
-}
-
 func main() {
+	config.LoadEnv()
 	uri := os.Getenv("MONGODB_URI")
 	if uri == "" {
 		log.Fatal("MONGODB_URI not set")

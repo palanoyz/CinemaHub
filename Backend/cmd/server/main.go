@@ -11,16 +11,12 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system environment variables")
-	}
-}
-
 func main() {
+	config.LoadEnv()
+
+	// Initialize Connections
 	db := config.ConnectMongoDB()
 	rdb := config.ConnectRedis()
 	auth.InitFirebase()
@@ -34,9 +30,12 @@ func main() {
 
 	router := gin.Default()
 
-	// CORS Middleware
+	// CORS configuration
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		AllowOrigins:     []string{config.AppConfig.FrontendURL},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
 
@@ -61,8 +60,9 @@ func main() {
 		})
 	}
 
-	log.Println("Server starting on :8080")
-	if err := router.Run(":8080"); err != nil {
+	port := config.AppConfig.Port
+	log.Println("Server starting on :" + port)
+	if err := router.Run(":" + port); err != nil {
 		log.Fatal("Failed to run server: ", err)
 	}
 }

@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"log"
-	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -13,10 +12,7 @@ import (
 var MongoClient *mongo.Client
 
 func ConnectMongoDB() *mongo.Client {
-	uri := os.Getenv("MONGODB_URI")
-	if uri == "" {
-		log.Fatal("MONGODB_URI environment variable is not set")
-	}
+	uri := AppConfig.MongoDB_URI
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
