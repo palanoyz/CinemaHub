@@ -3,35 +3,25 @@ defineProps<{
   movie: {
     id: string
     title: string
-    description: string
     poster_url: string
-    duration: number
-    genre: string[]
     rating: number
   }
 }>()
 </script>
 
 <template>
-  <div class="movie-card">
+  <router-link :to="'/movie/' + movie.id" class="movie-card">
     <div class="poster-wrapper">
       <img :src="movie.poster_url" :alt="movie.title" />
       <div class="rating-badge">★ {{ movie.rating }}</div>
     </div>
     <div class="info">
       <h3>{{ movie.title }}</h3>
-      <div class="meta">
-        <span class="duration">{{ movie.duration }} min</span>
-        <div class="genres-list">
-          <span v-for="genre in movie.genre" :key="genre" class="genre-badge">{{ genre }}</span>
-        </div>
+      <div class="book-btn">
+        View Details
       </div>
-      <p class="description">{{ movie.description }}</p>
-      <router-link :to="'/movie/' + movie.id" class="book-btn">
-        Book Tickets
-      </router-link>
     </div>
-  </div>
+  </router-link>
 </template>
 
 <style scoped>
@@ -40,25 +30,33 @@ defineProps<{
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
+  text-decoration: none;
+  color: inherit;
 }
 
 .movie-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-8px);
   box-shadow: var(--shadow-md);
 }
 
 .poster-wrapper {
   position: relative;
   aspect-ratio: 2/3;
+  overflow: hidden;
 }
 
 .poster-wrapper img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.movie-card:hover img {
+  transform: scale(1.05);
 }
 
 .rating-badge {
@@ -70,7 +68,7 @@ defineProps<{
   padding: 4px 8px;
   border-radius: var(--radius-sm);
   font-weight: 700;
-  font-size: 14px;
+  font-size: 12px;
   backdrop-filter: blur(4px);
 }
 
@@ -79,69 +77,30 @@ defineProps<{
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  gap: 15px;
 }
 
 h3 {
-  margin: 0 0 8px;
-  font-size: 1.25rem;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
   color: var(--text-main);
-}
-
-.meta {
-  margin-bottom: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.duration {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-}
-
-.genres-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.genre-badge {
-  background: #f0f0f0;
-  color: var(--text-muted);
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.description {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  margin-bottom: 20px;
-  display: -webkit-box;
-  line-clamp: 3;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  line-height: 1.3;
 }
 
 .book-btn {
-  margin-top: auto;
   background: var(--primary-color);
   color: white;
-  border: none;
-  padding: 12px;
+  padding: 10px;
   border-radius: var(--radius-md);
   font-weight: 700;
-  width: 100%;
-  text-decoration: none;
+  font-size: 0.9rem;
   text-align: center;
-  display: block;
   transition: background 0.2s;
 }
 
-.book-btn:hover {
+.movie-card:hover .book-btn {
   background: var(--primary-hover);
 }
 </style>
