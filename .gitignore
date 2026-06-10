@@ -20,6 +20,9 @@ Thumbs.db
 # Firebase Service Account
 Backend/configs/
 
+# Air temporary build artifacts
+Backend/tmp/
+
 # Build and Caches
 dist/
 .cache/
