@@ -23,10 +23,12 @@ func main() {
 
 	// Initialize Repositories
 	movieRepo := repository.NewMovieRepository(db.Database("cinemahub"))
+	showtimeRepo := repository.NewShowtimeRepository(db.Database("cinemahub"))
 
 	// Initialize Handlers
 	healthHandler := handler.NewHealthHandler(db, rdb)
 	movieHandler := handler.NewMovieHandler(movieRepo)
+	showtimeHandler := handler.NewShowtimeHandler(showtimeRepo)
 
 	router := gin.Default()
 
@@ -45,6 +47,8 @@ func main() {
 	api := router.Group("/api")
 	{
 		api.GET("/movies", movieHandler.List)
+		api.GET("/movies/:id/showtimes", showtimeHandler.GetByMovie)
+		api.GET("/showtimes/:id", showtimeHandler.GetByID)
 	}
 
 	// Protected routes
