@@ -16,7 +16,7 @@ func InitFirebase() {
 	projectID := config.AppConfig.FirebaseProjectID
 	serviceAccountPath := config.AppConfig.FirebaseServiceAccountPath
 
-	opt := option.WithCredentialsFile(serviceAccountPath)
+	opt := option.WithAuthCredentialsFile(option.ServiceAccount, serviceAccountPath)
 	config := &firebase.Config{ProjectID: projectID}
 
 	app, err := firebase.NewApp(context.Background(), config, opt)
