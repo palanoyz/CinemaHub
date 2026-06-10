@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"cinemahub-backend/internal/auth"
+	"github.com/palanoyz/cinemahub/internal/auth"
 	"net/http"
 	"strings"
 

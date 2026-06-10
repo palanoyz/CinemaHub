@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"cinemahub-backend/internal/config"
+	"github.com/palanoyz/cinemahub/internal/config"
 	"context"
 	"log"
 

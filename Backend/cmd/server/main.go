@@ -1,11 +1,11 @@
 package main
 
 import (
-	"cinemahub-backend/internal/auth"
-	"cinemahub-backend/internal/config"
-	"cinemahub-backend/internal/handler"
-	"cinemahub-backend/internal/middleware"
-	"cinemahub-backend/internal/repository"
+	"github.com/palanoyz/cinemahub/internal/auth"
+	"github.com/palanoyz/cinemahub/internal/config"
+	"github.com/palanoyz/cinemahub/internal/handler"
+	"github.com/palanoyz/cinemahub/internal/middleware"
+	"github.com/palanoyz/cinemahub/internal/repository"
 	"log"
 	"net/http"
 

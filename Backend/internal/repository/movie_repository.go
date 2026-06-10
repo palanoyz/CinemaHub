@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"cinemahub-backend/internal/model"
+	"github.com/palanoyz/cinemahub/internal/model"
 	"context"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"

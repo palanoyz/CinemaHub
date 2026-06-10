@@ -1,4 +1,4 @@
-module cinemahub-backend
+module github.com/palanoyz/cinemahub
 
 go 1.25.8
 

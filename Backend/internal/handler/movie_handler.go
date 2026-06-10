@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"cinemahub-backend/internal/repository"
+	"github.com/palanoyz/cinemahub/internal/repository"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
