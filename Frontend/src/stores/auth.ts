@@ -1,30 +1,43 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { auth, googleProvider } from '../firebase';
-import { 
-  signInWithPopup, 
-  signOut, 
+import {
+  signInWithPopup,
+  signOut,
   onAuthStateChanged,
-  type User 
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  type User
 } from 'firebase/auth';
+
+async function loginWithGoogle() {
+  return signInWithPopup(auth, googleProvider);
+}
+
+async function signUp(email: string, password: string) {
+  return createUserWithEmailAndPassword(auth, email, password);
+}
+
+async function loginWithEmail(email: string, password: string) {
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
+async function logout() {
+  return signOut(auth);
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const loading = ref(true);
 
-  // Initialize observer
-  onAuthStateChanged(auth, (firebaseUser) => {
-    user.value = firebaseUser;
-    loading.value = false;
+  // This promise will resolve once the first auth state check is complete
+  const isReady = new Promise((resolve) => {
+    onAuthStateChanged(auth, (firebaseUser) => {
+      user.value = firebaseUser;
+      loading.value = false;
+      resolve(true);
+    });
   });
 
-  async function loginWithGoogle() {
-    return signInWithPopup(auth, googleProvider);
-  }
-
-  async function logout() {
-    return signOut(auth);
-  }
-
-  return { user, loading, loginWithGoogle, logout };
+  return { user, loading, isReady, loginWithGoogle, signUp, loginWithEmail, logout };
 });

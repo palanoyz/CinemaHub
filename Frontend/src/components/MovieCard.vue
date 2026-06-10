@@ -22,7 +22,6 @@ defineProps<{
       <h3>{{ movie.title }}</h3>
       <div class="meta">
         <span class="duration">
-          <!-- <span class="icon">⏱️</span> -->
           {{ movie.duration }} min
         </span>
         <div class="genres-list">

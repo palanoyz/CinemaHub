@@ -1,24 +1,48 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const email = ref('')
 const password = ref('')
 const error = ref('')
+const loading = ref(false)
 
 async function handleGoogleLogin() {
   try {
     await authStore.loginWithGoogle()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
-    error.value = err.message
+    router.push('/')
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      error.value = err.response?.data?.error || err.message
+    } else if (err instanceof Error) {
+      error.value = err.message
+    } else {
+      error.value = 'An unexpected error occurred'
+    }
   }
 }
 
-
 async function handleEmailLogin() {
-  error.value = "Email login is initialized but needs UI refinement. Google login is ready."
+  error.value = ""
+  loading.value = true
+  try {
+    await authStore.loginWithEmail(email.value, password.value)
+    router.push('/')
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      error.value = err.response?.data?.error || err.message
+    } else if (err instanceof Error) {
+      error.value = err.message
+    } else {
+      error.value = 'Invalid email or password'
+    }
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -54,21 +78,21 @@ async function handleEmailLogin() {
           <span>OR</span>
         </div>
 
-        <div class="email-form">
+        <form @submit.prevent="handleEmailLogin" class="email-form">
           <div class="input-group">
-            <input v-model="email" type="email" placeholder="Email address" />
+            <input v-model="email" type="email" placeholder="Email address" required />
           </div>
           <div class="input-group">
-            <input v-model="password" type="password" placeholder="Password" />
+            <input v-model="password" type="password" placeholder="Password" required />
           </div>
-          <button @click="handleEmailLogin" class="email-btn" disabled>
-            Login with Email
+          <button type="submit" class="email-btn" :disabled="loading">
+            {{ loading ? 'Logging in...' : 'Login with Email' }}
           </button>
-        </div>
+        </form>
       </div>
 
       <div class="footer">
-        Don't have an account? <a href="#">Sign up</a>
+        Don't have an account? <router-link to="/signup">Sign up</router-link>
       </div>
     </div>
   </div>
@@ -189,14 +213,18 @@ p {
   border-radius: var(--radius-md);
   font-size: 15px;
   font-weight: 600;
+}
+
+.email-btn:disabled {
   opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .footer {
   margin-top: 32px;
   text-align: center;
   font-size: 14px;
-  color: var(--text-muted);
+  color: #666;
 }
 
 .footer a {

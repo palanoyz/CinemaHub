@@ -70,6 +70,7 @@ nav {
   align-items: center;
   gap: 10px;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .brand .logo {
