@@ -10,11 +10,12 @@ const error = ref('')
 async function handleGoogleLogin() {
   try {
     await authStore.loginWithGoogle()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     error.value = err.message
   }
 }
+
 
 async function handleEmailLogin() {
   error.value = "Email login is initialized but needs UI refinement. Google login is ready."
