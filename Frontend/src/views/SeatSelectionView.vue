@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable  @typescript-eslint/no-explicit-any */
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
@@ -13,6 +13,7 @@ const selectedSeats = ref<string[]>([])
 const loading = ref(true)
 const error = ref('')
 const locking = ref(false)
+let ws: WebSocket | null = null
 
 async function fetchShowtime() {
   try {
@@ -20,14 +21,7 @@ async function fetchShowtime() {
     const res = await api.get(`/showtimes/${id}`)
     showtime.value = res.data
     
-    // Sync local selection with server-side locks owned by this user
-    if (showtime.value && authStore.user) {
-      const myLockedSeats = showtime.value.seats
-        .filter((s: any) => s.status === 'LOCKED' && s.locked_by === authStore.user?.uid)
-        .map((s: any) => s.id)
-      
-      selectedSeats.value = [...new Set([...selectedSeats.value, ...myLockedSeats])]
-    }
+    syncLocks()
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       error.value = err.response?.data?.error || err.message
@@ -36,6 +30,42 @@ async function fetchShowtime() {
     }
   } finally {
     loading.value = false
+  }
+}
+
+function syncLocks() {
+  if (showtime.value && authStore.user) {
+    const myLockedSeats = showtime.value.seats
+      .filter((s: any) => s.status === 'LOCKED' && s.locked_by === authStore.user?.uid)
+      .map((s: any) => s.id)
+    
+    selectedSeats.value = [...new Set([...selectedSeats.value, ...myLockedSeats])]
+  }
+}
+
+function setupWebSocket() {
+  const wsBase = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api'
+  const wsUrl = `${wsBase}/showtimes/${route.params.showtimeId}/ws`
+  
+  ws = new WebSocket(wsUrl)
+  
+  ws.onmessage = (event) => {
+    const update = JSON.parse(event.data)
+    
+    if (showtime.value && update.showtime_id === route.params.showtimeId) {
+      // Update seat status based on incoming WebSocket message
+      showtime.value.seats = showtime.value.seats.map((s: any) => {
+        if (update.seat_ids.includes(s.id)) {
+          return { ...s, status: update.status, locked_by: update.locked_by }
+        }
+        return s
+      })
+      syncLocks()
+    }
+  }
+
+  ws.onclose = () => {
+    console.log('WebSocket closed')
   }
 }
 
@@ -104,7 +134,14 @@ async function handleBooking() {
   alert(`Booking seats: ${selectedSeats.value.join(', ')}. \nTotal: ${totalPrice.value} THB`)
 }
 
-onMounted(fetchShowtime)
+onMounted(() => {
+  fetchShowtime()
+  setupWebSocket()
+})
+
+onUnmounted(() => {
+  if (ws) ws.close()
+})
 </script>
 
 <template>
@@ -115,6 +152,7 @@ onMounted(fetchShowtime)
 
     <div v-else-if="error" class="error-state">
       <p>{{ error }}</p>
+      <button @click="fetchShowtime">Refresh Map</button>
     </div>
 
     <div v-else-if="showtime" class="booking-layout">
@@ -253,12 +291,19 @@ onMounted(fetchShowtime)
   color: white;
 }
 
-.seat.booked {
+.seat.booked, .seat.locked-by-others {
   background: #333;
   color: #666;
   cursor: not-allowed;
 }
 
+/* User's own locks should be Red (using .locked when owned by user) */
+.seat.locked {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* Others' locks should be Yellow */
 .seat.locked-by-others {
   background: #ffc107;
   color: #333;
