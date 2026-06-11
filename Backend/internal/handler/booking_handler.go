@@ -178,14 +178,14 @@ func (h *BookingHandler) ConfirmBooking(c *gin.Context) {
 		}
 	}
 
-	// 2. Atomic Update MongoDB status to BOOKED
+	// 2. Update MongoDB status to BOOKED
 	err = h.showtimeRepo.UpdateSeatStatus(ctx, showtimeID, req.SeatIDs, model.SeatBooked, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to confirm booking"})
 		return
 	}
 
-	// NEW: Get Showtime and Movie info for the booking record
+	// Get Showtime and Movie info for the booking record
 	showtime, _ := h.showtimeRepo.GetByID(ctx, showtimeID)
 	movie, _ := h.movieRepo.GetByID(ctx, showtime.MovieID)
 
@@ -222,6 +222,18 @@ func (h *BookingHandler) ConfirmBooking(c *gin.Context) {
 	go h.publishToRabbit(userID, showtimeIDStr, req.SeatIDs)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Booking confirmed! Your tickets are being generated."})
+}
+
+func (h *BookingHandler) ListUserBookings(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	bookings, err := h.bookingRepo.GetAll(c.Request.Context(), bson.M{"user_id": userID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
+		return
+	}
+
+	c.JSON(http.StatusOK, bookings)
 }
 
 func (h *BookingHandler) publishToRabbit(userID, showtimeID string, seatIDs []string) {

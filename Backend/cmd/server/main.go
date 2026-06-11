@@ -77,6 +77,7 @@ func main() {
 		protected.POST("/showtimes/:id/lock", bookingHandler.LockSeats)
 		protected.POST("/showtimes/:id/unlock", bookingHandler.UnlockSeats)
 		protected.POST("/showtimes/:id/confirm", bookingHandler.ConfirmBooking)
+		protected.GET("/bookings", bookingHandler.ListUserBookings)
 	}
 
 	// Admin-only routes

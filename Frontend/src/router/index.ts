@@ -6,6 +6,7 @@ import SignUpView from '../views/SignUpView.vue'
 import MovieDetailView from '../views/MovieDetailView.vue'
 import SeatSelectionView from '../views/SeatSelectionView.vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
+import TicketView from '../views/TicketView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -43,6 +44,12 @@ const router = createRouter({
       name: 'admin',
       component: AdminDashboardView,
       meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/tickets',
+      name: 'tickets',
+      component: TicketView,
+      meta: { requiresAuth: true }
     }
   ],
 })

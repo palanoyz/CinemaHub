@@ -14,12 +14,21 @@ async function handleLogout() {
 <template>
   <header v-if="!authStore.loading" class="main-header">
     <nav class="container">
-      <div class="brand" @click="router.push('/')">
-        <span class="logo">🎬</span>
-        <span class="text">CinemaHub</span>
+      <div class="nav-left">
+        <router-link to="/" class="brand">
+          <span class="logo">🎬</span>
+          <span class="text">CinemaHub</span>
+        </router-link>
+
+        <div class="nav-links">
+          <router-link to="/tickets" class="nav-link">My Tickets</router-link>
+        </div>
       </div>
 
       <div v-if="authStore.user" class="user-info">
+        <router-link v-if="authStore.isAdmin" to="/admin" class="admin-link">
+          Dashboard
+        </router-link>
         <div class="profile">
           <img v-if="authStore.user?.photoURL" :src="authStore.user.photoURL" alt="Profile" class="avatar"
             referrerpolicy="no-referrer" />
@@ -65,6 +74,12 @@ nav {
   align-items: center;
 }
 
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -85,6 +100,24 @@ nav {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+  padding-top: 3px;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.nav-link:hover {
+  color: var(--primary-color);
+  transition: ease-in-out 0.2s;
 }
 
 .user-info {
