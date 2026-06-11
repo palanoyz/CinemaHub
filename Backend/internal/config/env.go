@@ -10,6 +10,7 @@ import (
 type Config struct {
 	MongoDB_URI                string
 	RedisAddr                  string
+	RabbitMQ_URL               string
 	FirebaseProjectID          string
 	FirebaseServiceAccountPath string
 	FrontendURL                string
@@ -26,6 +27,7 @@ func LoadEnv() {
 	AppConfig = &Config{
 		MongoDB_URI:                getEnv("MONGODB_URI", ""),
 		RedisAddr:                  getEnv("REDIS_ADDR", "localhost:6379"),
+		RabbitMQ_URL:               getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
 		FirebaseProjectID:          getEnv("FIREBASE_PROJECT_ID", ""),
 		FirebaseServiceAccountPath: getEnv("FIREBASE_SERVICE_ACCOUNT_PATH", ""),
 		FrontendURL:                getEnv("FRONTEND_URL", "http://localhost:5173"),

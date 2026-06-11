@@ -20,6 +20,7 @@ func main() {
 	// Initialize Connections
 	db := config.ConnectMongoDB()
 	rdb := config.ConnectRedis()
+	rabbitConn := config.ConnectRabbitMQ()
 	auth.InitFirebase()
 	hub := websocket.NewHub()
 
@@ -31,7 +32,10 @@ func main() {
 	healthHandler := handler.NewHealthHandler(db, rdb)
 	movieHandler := handler.NewMovieHandler(movieRepo)
 	showtimeHandler := handler.NewShowtimeHandler(showtimeRepo, rdb)
-	bookingHandler := handler.NewBookingHandler(showtimeRepo, rdb, hub)
+	bookingHandler := handler.NewBookingHandler(showtimeRepo, rdb, hub, rabbitConn)
+
+	// Start Background Workers
+	websocket.StartBookingConsumer(rabbitConn)
 
 	router := gin.Default()
 
@@ -70,6 +74,7 @@ func main() {
 		// Booking Routes
 		protected.POST("/showtimes/:id/lock", bookingHandler.LockSeats)
 		protected.POST("/showtimes/:id/unlock", bookingHandler.UnlockSeats)
+		protected.POST("/showtimes/:id/confirm", bookingHandler.ConfirmBooking)
 	}
 
 	port := config.AppConfig.Port

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/palanoyz/cinemahub/internal/model"
 	"github.com/palanoyz/cinemahub/internal/repository"
 	"github.com/palanoyz/cinemahub/internal/websocket"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -17,17 +19,19 @@ type BookingHandler struct {
 	showtimeRepo *repository.ShowtimeRepository
 	redis        *redis.Client
 	hub          *websocket.Hub
+	rabbit       *amqp.Connection
 }
 
-func NewBookingHandler(repo *repository.ShowtimeRepository, rdb *redis.Client, hub *websocket.Hub) *BookingHandler {
+func NewBookingHandler(repo *repository.ShowtimeRepository, rdb *redis.Client, hub *websocket.Hub, rabbit *amqp.Connection) *BookingHandler {
 	return &BookingHandler{
 		showtimeRepo: repo,
 		redis:        rdb,
 		hub:          hub,
+		rabbit:       rabbit,
 	}
 }
 
-type LockRequest struct {
+type BookingRequest struct {
 	SeatIDs []string `json:"seat_ids" binding:"required"`
 }
 
@@ -39,7 +43,7 @@ func (h *BookingHandler) LockSeats(c *gin.Context) {
 		return
 	}
 
-	var req LockRequest
+	var req BookingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -60,13 +64,11 @@ func (h *BookingHandler) LockSeats(c *gin.Context) {
 		}
 
 		if !success {
-			// If lock exists, check if it belongs to this user
 			currentOwner, _ := h.redis.Get(ctx, lockKey).Result()
 			if currentOwner != userID {
 				c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Seat %s is already being selected by someone else", seatID)})
 				return
 			}
-			// If it is owned by this user, refresh the TTL
 			h.redis.Expire(ctx, lockKey, 5*time.Minute)
 		}
 	}
@@ -102,7 +104,7 @@ func (h *BookingHandler) UnlockSeats(c *gin.Context) {
 		return
 	}
 
-	var req LockRequest
+	var req BookingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -128,7 +130,7 @@ func (h *BookingHandler) UnlockSeats(c *gin.Context) {
 		return
 	}
 
-	// 3. Broadcast to all clients
+	// 3. Broadcast
 	h.hub.Broadcast(websocket.SeatUpdate{
 		ShowtimeID: showtimeIDStr,
 		SeatIDs:    req.SeatIDs,
@@ -136,4 +138,83 @@ func (h *BookingHandler) UnlockSeats(c *gin.Context) {
 	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Seats released successfully"})
+}
+
+func (h *BookingHandler) ConfirmBooking(c *gin.Context) {
+	showtimeIDStr := c.Param("id")
+	showtimeID, err := bson.ObjectIDFromHex(showtimeIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid showtime ID"})
+		return
+	}
+
+	var req BookingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	ctx := c.Request.Context()
+
+	// 1. Verify that user still owns the locks in Redis
+	for _, seatID := range req.SeatIDs {
+		lockKey := fmt.Sprintf("lock:showtime:%s:seat:%s", showtimeIDStr, seatID)
+		owner, _ := h.redis.Get(ctx, lockKey).Result()
+		if owner != userID {
+			c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("Seat %s lock has expired or belongs to someone else", seatID)})
+			return
+		}
+	}
+
+	// 2. Update MongoDB status to BOOKED
+	err = h.showtimeRepo.UpdateSeatStatus(ctx, showtimeID, req.SeatIDs, model.SeatBooked, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to confirm booking"})
+		return
+	}
+
+	// 3. Clear Redis Locks
+	for _, seatID := range req.SeatIDs {
+		lockKey := fmt.Sprintf("lock:showtime:%s:seat:%s", showtimeIDStr, seatID)
+		h.redis.Del(ctx, lockKey)
+	}
+
+	// 4. Broadcast via WebSockets
+	h.hub.Broadcast(websocket.SeatUpdate{
+		ShowtimeID: showtimeIDStr,
+		SeatIDs:    req.SeatIDs,
+		Status:     string(model.SeatBooked),
+	})
+
+	// 5. ASYNC: Publish to RabbitMQ
+	go h.publishToRabbit(userID, showtimeIDStr, req.SeatIDs)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Booking confirmed! Your tickets are being generated."})
+}
+
+func (h *BookingHandler) publishToRabbit(userID, showtimeID string, seatIDs []string) {
+	ch, err := h.rabbit.Channel()
+	if err != nil {
+		return
+	}
+	defer ch.Close()
+
+	msg := websocket.BookingMessage{
+		UserID:     userID,
+		ShowtimeID: showtimeID,
+		SeatIDs:    seatIDs,
+	}
+
+	body, _ := json.Marshal(msg)
+
+	ch.Publish(
+		"",         // exchange
+		"bookings", // routing key (queue name)
+		false,      // mandatory
+		false,      // immediate
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        body,
+		})
 }
