@@ -28,7 +28,7 @@ func main() {
 	// Initialize Handlers
 	healthHandler := handler.NewHealthHandler(db, rdb)
 	movieHandler := handler.NewMovieHandler(movieRepo)
-	showtimeHandler := handler.NewShowtimeHandler(showtimeRepo)
+	showtimeHandler := handler.NewShowtimeHandler(showtimeRepo, rdb)
 	bookingHandler := handler.NewBookingHandler(showtimeRepo, rdb)
 
 	router := gin.Default()
