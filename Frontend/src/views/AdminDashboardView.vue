@@ -184,7 +184,7 @@ table {
 }
 
 th {
-  background: #f8f9fa;
+  background: #f0f0f0;
   padding: 16px 24px;
   font-size: 0.85rem;
   font-weight: 700;
@@ -220,8 +220,8 @@ td {
 }
 
 .price {
-  font-weight: 800;
-  color: var(--primary-color);
+  font-weight: 600;
+  color: #666;
 }
 
 .empty {
