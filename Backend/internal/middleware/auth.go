@@ -17,7 +17,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Header format: Bearer <token>
 		idToken := strings.TrimPrefix(authHeader, "Bearer ")
 		if idToken == authHeader {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header must start with Bearer"})
@@ -32,9 +31,30 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Store user details in Gin context for handlers to use
 		c.Set("user_id", token.UID)
+		c.Set("claims", token.Claims)
 		
+		c.Next()
+	}
+}
+
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims, exists := c.Get("claims")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized access"})
+			c.Abort()
+			return
+		}
+
+		// Check for custom "admin" claim
+		userClaims := claims.(map[string]interface{})
+		if admin, ok := userClaims["admin"].(bool); !ok || !admin {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Admin privileges required"})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

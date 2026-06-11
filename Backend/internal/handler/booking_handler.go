@@ -17,14 +17,25 @@ import (
 
 type BookingHandler struct {
 	showtimeRepo *repository.ShowtimeRepository
+	bookingRepo  *repository.BookingRepository
+	movieRepo    *repository.MovieRepository
 	redis        *redis.Client
 	hub          *websocket.Hub
 	rabbit       *amqp.Connection
 }
 
-func NewBookingHandler(repo *repository.ShowtimeRepository, rdb *redis.Client, hub *websocket.Hub, rabbit *amqp.Connection) *BookingHandler {
+func NewBookingHandler(
+	showtimeRepo *repository.ShowtimeRepository,
+	bookingRepo *repository.BookingRepository,
+	movieRepo *repository.MovieRepository,
+	rdb *redis.Client,
+	hub *websocket.Hub,
+	rabbit *amqp.Connection,
+) *BookingHandler {
 	return &BookingHandler{
-		showtimeRepo: repo,
+		showtimeRepo: showtimeRepo,
+		bookingRepo:  bookingRepo,
+		movieRepo:    movieRepo,
 		redis:        rdb,
 		hub:          hub,
 		rabbit:       rabbit,
@@ -167,12 +178,32 @@ func (h *BookingHandler) ConfirmBooking(c *gin.Context) {
 		}
 	}
 
-	// 2. Update MongoDB status to BOOKED
+	// 2. Atomic Update MongoDB status to BOOKED
 	err = h.showtimeRepo.UpdateSeatStatus(ctx, showtimeID, req.SeatIDs, model.SeatBooked, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to confirm booking"})
 		return
 	}
+
+	// NEW: Get Showtime and Movie info for the booking record
+	showtime, _ := h.showtimeRepo.GetByID(ctx, showtimeID)
+	movie, _ := h.movieRepo.GetByID(ctx, showtime.MovieID)
+
+	// Calculate price (for now fixed at 250 per seat)
+	totalPrice := float64(len(req.SeatIDs)) * 250.0
+
+	// Save Booking Record
+	booking := &model.Booking{
+		UserID:     userID,
+		ShowtimeID: showtimeID,
+		MovieTitle: movie.Title,
+		HallName:   showtime.HallName,
+		StartTime:  showtime.StartTime,
+		SeatIDs:    req.SeatIDs,
+		TotalPrice: totalPrice,
+		CreatedAt:  time.Now(),
+	}
+	h.bookingRepo.Create(ctx, booking)
 
 	// 3. Clear Redis Locks
 	for _, seatID := range req.SeatIDs {

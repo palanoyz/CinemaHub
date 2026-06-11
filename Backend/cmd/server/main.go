@@ -27,12 +27,14 @@ func main() {
 	// Initialize Repositories
 	movieRepo := repository.NewMovieRepository(db.Database("cinemahub"))
 	showtimeRepo := repository.NewShowtimeRepository(db.Database("cinemahub"))
+	bookingRepo := repository.NewBookingRepository(db.Database("cinemahub"))
 
 	// Initialize Handlers
 	healthHandler := handler.NewHealthHandler(db, rdb)
 	movieHandler := handler.NewMovieHandler(movieRepo)
 	showtimeHandler := handler.NewShowtimeHandler(showtimeRepo, rdb)
-	bookingHandler := handler.NewBookingHandler(showtimeRepo, rdb, hub, rabbitConn)
+	bookingHandler := handler.NewBookingHandler(showtimeRepo, bookingRepo, movieRepo, rdb, hub, rabbitConn)
+	adminHandler := handler.NewAdminHandler(bookingRepo)
 
 	// Start Background Workers
 	websocket.StartBookingConsumer(rabbitConn)
@@ -75,6 +77,18 @@ func main() {
 		protected.POST("/showtimes/:id/lock", bookingHandler.LockSeats)
 		protected.POST("/showtimes/:id/unlock", bookingHandler.UnlockSeats)
 		protected.POST("/showtimes/:id/confirm", bookingHandler.ConfirmBooking)
+	}
+
+	// Admin-only routes
+	admin := router.Group("/api/admin")
+	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	{
+		admin.GET("/stats", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Welcome, Administrator. You can access management tools here.",
+			})
+		})
+		admin.GET("/bookings", adminHandler.ListBookings)
 	}
 
 	port := config.AppConfig.Port
