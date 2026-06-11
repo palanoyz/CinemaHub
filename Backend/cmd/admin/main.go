@@ -13,17 +13,25 @@ func main() {
 	config.LoadEnv()
 	auth.InitFirebase()
 
-	if len(os.Args) < 2 {
-		log.Fatal("Usage: go run cmd/admin/main.go <user_id>")
+	if len(os.Args) < 3 {
+		log.Fatal("Usage: go run cmd/admin/main.go <promote|demote> <user_id>")
 	}
 
-	uid := os.Args[1]
+	action := os.Args[1]
+	uid := os.Args[2]
 
-	claims := map[string]any{"admin": true}
+	isAdmin := false
+	if action == "promote" {
+		isAdmin = true
+	} else if action != "demote" {
+		log.Fatal("Action must be 'promote' or 'demote'")
+	}
+
+	claims := map[string]any{"admin": isAdmin}
 	err := auth.AuthClient.SetCustomUserClaims(context.Background(), uid, claims)
 	if err != nil {
 		log.Fatalf("error setting custom claims: %v\n", err)
 	}
 
-	log.Printf("Successfully promoted user %s to ADMIN\n", uid)
+	log.Printf("Successfully set admin status to %v for user %s\n", isAdmin, uid)
 }
