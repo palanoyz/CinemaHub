@@ -2,20 +2,32 @@
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 import axios from 'axios'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const showtime = ref<any>(null)
 const selectedSeats = ref<string[]>([])
 const loading = ref(true)
 const error = ref('')
+const locking = ref(false)
 
 async function fetchShowtime() {
   try {
     const id = route.params.showtimeId
     const res = await api.get(`/showtimes/${id}`)
     showtime.value = res.data
+    
+    // Sync local selection with server-side locks owned by this user
+    if (showtime.value && authStore.user) {
+      const myLockedSeats = showtime.value.seats
+        .filter((s: any) => s.status === 'LOCKED' && s.locked_by === authStore.user?.uid)
+        .map((s: any) => s.id)
+      
+      selectedSeats.value = [...new Set([...selectedSeats.value, ...myLockedSeats])]
+    }
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       error.value = err.response?.data?.error || err.message
@@ -37,19 +49,54 @@ const rows = computed(() => {
   return Object.entries(rowMap).sort()
 })
 
-function toggleSeat(seat: any) {
-  if (seat.status !== 'AVAILABLE') return
-
-  const index = selectedSeats.value.indexOf(seat.id)
-  if (index === -1) {
-    selectedSeats.value.push(seat.id)
+async function toggleSeat(seat: any) {
+  // Allow clicking if AVAILABLE or if LOCKED by this user
+  const isLockedByMe = seat.status === 'LOCKED' && seat.locked_by === authStore.user?.uid
+  if ((seat.status !== 'AVAILABLE' && !isLockedByMe) || locking.value) return
+  
+  const isCurrentlySelected = selectedSeats.value.includes(seat.id)
+  
+  if (isCurrentlySelected) {
+    // Attempt to UNLOCK seat on backend
+    locking.value = true
+    error.value = ""
+    try {
+      await api.post(`/protected/showtimes/${route.params.showtimeId}/unlock`, {
+        seat_ids: [seat.id]
+      })
+      const index = selectedSeats.value.indexOf(seat.id)
+      selectedSeats.value.splice(index, 1)
+      await fetchShowtime() // Refresh to sync UI
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        error.value = err.response?.data?.error || "Failed to release seat"
+      }
+    } finally {
+      locking.value = false
+    }
   } else {
-    selectedSeats.value.splice(index, 1)
+    // Attempt to LOCK seat on backend
+    locking.value = true
+    error.value = ""
+    try {
+      await api.post(`/protected/showtimes/${route.params.showtimeId}/lock`, {
+        seat_ids: [seat.id]
+      })
+      selectedSeats.value.push(seat.id)
+      await fetchShowtime() // Refresh to sync UI
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        error.value = err.response?.data?.error || "This seat was just taken!"
+      }
+      await fetchShowtime()
+    } finally {
+      locking.value = false
+    }
   }
 }
 
 const totalPrice = computed(() => {
-  return selectedSeats.value.length * 250 // Hardcoded price for now
+  return selectedSeats.value.length * 250
 })
 
 async function handleBooking() {
@@ -77,10 +124,19 @@ onMounted(fetchShowtime)
         <div class="seats-grid">
           <div v-for="[rowName, seats] in rows" :key="rowName" class="row">
             <div class="row-label">{{ rowName }}</div>
-            <div v-for="seat in (seats as any[])" :key="seat.id" class="seat" :class="[
-              seat.status.toLowerCase(),
-              { selected: selectedSeats.includes(seat.id) }
-            ]" @click="toggleSeat(seat)">
+            <div 
+              v-for="seat in (seats as any[])" 
+              :key="seat.id"
+              class="seat"
+              :class="[
+                seat.status.toLowerCase(),
+                { 
+                  selected: selectedSeats.includes(seat.id),
+                  'locked-by-others': seat.status === 'LOCKED' && seat.locked_by !== authStore.user?.uid 
+                }
+              ]"
+              @click="toggleSeat(seat)"
+            >
               {{ seat.number }}
             </div>
           </div>
@@ -146,7 +202,7 @@ onMounted(fetchShowtime)
   background: #ddd;
   margin-bottom: 80px;
   border-radius: 50% 50% 0 0;
-  box-shadow: 0 15px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 15px 20px rgba(0,0,0,0.1);
   text-align: center;
   color: #999;
   font-size: 0.7rem;
@@ -192,7 +248,7 @@ onMounted(fetchShowtime)
   transform: scale(1.1);
 }
 
-.seat.selected {
+.seat.selected, .seat.locked {
   background: var(--primary-color);
   color: white;
 }
@@ -203,7 +259,7 @@ onMounted(fetchShowtime)
   cursor: not-allowed;
 }
 
-.seat.locked {
+.seat.locked-by-others {
   background: #ffc107;
   color: #333;
   cursor: not-allowed;
