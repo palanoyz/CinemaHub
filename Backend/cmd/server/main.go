@@ -38,6 +38,7 @@ func main() {
 
 	// Start Background Workers
 	websocket.StartBookingConsumer(rabbitConn)
+	websocket.StartExpirationWorker(rdb, hub, showtimeRepo)
 
 	router := gin.Default()
 

@@ -24,6 +24,9 @@ func ConnectRedis() *redis.Client {
 		log.Fatal("Failed to connect to Redis: ", err)
 	}
 
+	// Enable Keyspace Notifications for Expiration (Ex)
+	client.ConfigSet(ctx, "notify-keyspace-events", "Ex")
+
 	log.Println("Connected to Redis successfully")
 	RedisClient = client
 	return client
