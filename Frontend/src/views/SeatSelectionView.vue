@@ -1,18 +1,20 @@
 <script setup lang="ts">
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 import axios from 'axios'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const showtime = ref<any>(null)
 const selectedSeats = ref<string[]>([])
 const loading = ref(true)
 const error = ref('')
 const locking = ref(false)
+const bookingSuccess = ref(false)
 let ws: WebSocket | null = null
 
 async function fetchShowtime() {
@@ -20,7 +22,7 @@ async function fetchShowtime() {
     const id = route.params.showtimeId
     const res = await api.get(`/showtimes/${id}`)
     showtime.value = res.data
-    
+
     syncLocks()
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
@@ -35,25 +37,23 @@ async function fetchShowtime() {
 
 function syncLocks() {
   if (showtime.value && authStore.user) {
-    const myLockedSeats = showtime.value.seats
+    // Source of truth: Server-side locked seats belonging to me
+    selectedSeats.value = showtime.value.seats
       .filter((s: any) => s.status === 'LOCKED' && s.locked_by === authStore.user?.uid)
       .map((s: any) => s.id)
-    
-    selectedSeats.value = [...new Set([...selectedSeats.value, ...myLockedSeats])]
   }
 }
 
 function setupWebSocket() {
   const wsBase = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api'
   const wsUrl = `${wsBase}/showtimes/${route.params.showtimeId}/ws`
-  
+
   ws = new WebSocket(wsUrl)
-  
+
   ws.onmessage = (event) => {
     const update = JSON.parse(event.data)
-    
+
     if (showtime.value && update.showtime_id === route.params.showtimeId) {
-      // Update seat status based on incoming WebSocket message
       showtime.value.seats = showtime.value.seats.map((s: any) => {
         if (update.seat_ids.includes(s.id)) {
           return { ...s, status: update.status, locked_by: update.locked_by }
@@ -62,10 +62,6 @@ function setupWebSocket() {
       })
       syncLocks()
     }
-  }
-
-  ws.onclose = () => {
-    console.log('WebSocket closed')
   }
 }
 
@@ -80,48 +76,33 @@ const rows = computed(() => {
 })
 
 async function toggleSeat(seat: any) {
-  // Allow clicking if AVAILABLE or if LOCKED by this user
   const isLockedByMe = seat.status === 'LOCKED' && seat.locked_by === authStore.user?.uid
   if ((seat.status !== 'AVAILABLE' && !isLockedByMe) || locking.value) return
-  
-  const isCurrentlySelected = selectedSeats.value.includes(seat.id)
-  
-  if (isCurrentlySelected) {
-    // Attempt to UNLOCK seat on backend
-    locking.value = true
-    error.value = ""
-    try {
+
+  locking.value = true
+  error.value = ""
+
+  try {
+    if (isLockedByMe) {
+      // UNLOCK
       await api.post(`/protected/showtimes/${route.params.showtimeId}/unlock`, {
         seat_ids: [seat.id]
       })
-      const index = selectedSeats.value.indexOf(seat.id)
-      selectedSeats.value.splice(index, 1)
-      await fetchShowtime() // Refresh to sync UI
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        error.value = err.response?.data?.error || "Failed to release seat"
-      }
-    } finally {
-      locking.value = false
-    }
-  } else {
-    // Attempt to LOCK seat on backend
-    locking.value = true
-    error.value = ""
-    try {
+    } else {
+      // LOCK
       await api.post(`/protected/showtimes/${route.params.showtimeId}/lock`, {
         seat_ids: [seat.id]
       })
-      selectedSeats.value.push(seat.id)
-      await fetchShowtime() // Refresh to sync UI
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        error.value = err.response?.data?.error || "This seat was just taken!"
-      }
-      await fetchShowtime()
-    } finally {
-      locking.value = false
     }
+    // Refresh from server to get final truth and call syncLocks()
+    await fetchShowtime()
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      error.value = err.response?.data?.error || "Action failed"
+    }
+    await fetchShowtime()
+  } finally {
+    locking.value = false
   }
 }
 
@@ -131,7 +112,23 @@ const totalPrice = computed(() => {
 
 async function handleBooking() {
   if (selectedSeats.value.length === 0) return
-  alert(`Booking seats: ${selectedSeats.value.join(', ')}. \nTotal: ${totalPrice.value} THB`)
+
+  locking.value = true
+  error.value = ""
+
+  try {
+    await api.post(`/protected/showtimes/${route.params.showtimeId}/confirm`, {
+      seat_ids: selectedSeats.value
+    })
+    bookingSuccess.value = true
+    selectedSeats.value = []
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      error.value = err.response?.data?.error || "Booking failed"
+    }
+  } finally {
+    locking.value = false
+  }
 }
 
 onMounted(() => {
@@ -146,6 +143,16 @@ onUnmounted(() => {
 
 <template>
   <div class="seat-selection container">
+    <!-- Success Modal -->
+    <div v-if="bookingSuccess" class="modal-overlay">
+      <div class="success-modal">
+        <div class="check-icon">✓</div>
+        <h2>Booking Successful!</h2>
+        <p>Your tickets have been reserved. We are processing your confirmation via RabbitMQ.</p>
+        <button @click="router.push('/')" class="home-btn">Back to Movies</button>
+      </div>
+    </div>
+
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
     </div>
@@ -162,19 +169,13 @@ onUnmounted(() => {
         <div class="seats-grid">
           <div v-for="[rowName, seats] in rows" :key="rowName" class="row">
             <div class="row-label">{{ rowName }}</div>
-            <div 
-              v-for="seat in (seats as any[])" 
-              :key="seat.id"
-              class="seat"
-              :class="[
-                seat.status.toLowerCase(),
-                { 
-                  selected: selectedSeats.includes(seat.id),
-                  'locked-by-others': seat.status === 'LOCKED' && seat.locked_by !== authStore.user?.uid 
-                }
-              ]"
-              @click="toggleSeat(seat)"
-            >
+            <div v-for="seat in (seats as any[])" :key="seat.id" class="seat" :class="[
+              seat.status.toLowerCase(),
+              {
+                selected: selectedSeats.includes(seat.id),
+                'locked-by-others': seat.status === 'LOCKED' && seat.locked_by !== authStore.user?.uid
+              }
+            ]" @click="toggleSeat(seat)">
               {{ seat.number }}
             </div>
           </div>
@@ -193,7 +194,18 @@ onUnmounted(() => {
           <h2>Booking Summary</h2>
           <div class="movie-info">
             <p class="hall">{{ showtime.hall_name }}</p>
-            <p class="time">{{ new Date(showtime.start_time).toLocaleString() }}</p>
+            <p class="time">
+              {{
+                new Date(showtime.start_time).toLocaleString('en-TH', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true
+                })
+              }}
+            </p>
           </div>
 
           <div class="selection-details">
@@ -204,8 +216,8 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <button class="confirm-btn" :disabled="selectedSeats.length === 0" @click="handleBooking">
-            Confirm Booking
+          <button class="confirm-btn" :disabled="selectedSeats.length === 0 || locking" @click="handleBooking">
+            {{ locking ? 'Processing...' : 'Confirm Booking' }}
           </button>
         </div>
       </div>
@@ -216,6 +228,65 @@ onUnmounted(() => {
 <style scoped>
 .seat-selection {
   padding: 40px 20px;
+}
+
+/* Success Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.success-modal {
+  background: white;
+  padding: 50px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  max-width: 450px;
+  box-shadow: var(--shadow-md);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.check-icon {
+  width: 80px;
+  height: 80px;
+  background: #4caf50;
+  color: white;
+  font-size: 40px;
+  line-height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 24px;
+}
+
+.home-btn {
+  margin-top: 30px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 14px 30px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .booking-layout {
@@ -240,7 +311,7 @@ onUnmounted(() => {
   background: #ddd;
   margin-bottom: 80px;
   border-radius: 50% 50% 0 0;
-  box-shadow: 0 15px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 15px 20px rgba(0, 0, 0, 0.1);
   text-align: center;
   color: #999;
   font-size: 0.7rem;
@@ -286,12 +357,14 @@ onUnmounted(() => {
   transform: scale(1.1);
 }
 
-.seat.selected, .seat.locked {
+.seat.selected,
+.seat.locked {
   background: var(--primary-color);
   color: white;
 }
 
-.seat.booked, .seat.locked-by-others {
+.seat.booked,
+.seat.locked-by-others {
   background: #333;
   color: #666;
   cursor: not-allowed;
