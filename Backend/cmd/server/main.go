@@ -6,6 +6,7 @@ import (
 	"github.com/palanoyz/cinemahub/internal/handler"
 	"github.com/palanoyz/cinemahub/internal/middleware"
 	"github.com/palanoyz/cinemahub/internal/repository"
+	"github.com/palanoyz/cinemahub/internal/websocket"
 	"log"
 	"net/http"
 
@@ -20,6 +21,7 @@ func main() {
 	db := config.ConnectMongoDB()
 	rdb := config.ConnectRedis()
 	auth.InitFirebase()
+	hub := websocket.NewHub()
 
 	// Initialize Repositories
 	movieRepo := repository.NewMovieRepository(db.Database("cinemahub"))
@@ -29,7 +31,7 @@ func main() {
 	healthHandler := handler.NewHealthHandler(db, rdb)
 	movieHandler := handler.NewMovieHandler(movieRepo)
 	showtimeHandler := handler.NewShowtimeHandler(showtimeRepo, rdb)
-	bookingHandler := handler.NewBookingHandler(showtimeRepo, rdb)
+	bookingHandler := handler.NewBookingHandler(showtimeRepo, rdb, hub)
 
 	router := gin.Default()
 
@@ -50,6 +52,7 @@ func main() {
 		api.GET("/movies", movieHandler.List)
 		api.GET("/movies/:id/showtimes", showtimeHandler.GetByMovie)
 		api.GET("/showtimes/:id", showtimeHandler.GetByID)
+		api.GET("/showtimes/:id/ws", handler.HandleWS(hub))
 	}
 
 	// Protected routes

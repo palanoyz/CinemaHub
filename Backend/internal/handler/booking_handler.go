@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/palanoyz/cinemahub/internal/model"
 	"github.com/palanoyz/cinemahub/internal/repository"
+	"github.com/palanoyz/cinemahub/internal/websocket"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -15,12 +16,14 @@ import (
 type BookingHandler struct {
 	showtimeRepo *repository.ShowtimeRepository
 	redis        *redis.Client
+	hub          *websocket.Hub
 }
 
-func NewBookingHandler(repo *repository.ShowtimeRepository, rdb *redis.Client) *BookingHandler {
+func NewBookingHandler(repo *repository.ShowtimeRepository, rdb *redis.Client, hub *websocket.Hub) *BookingHandler {
 	return &BookingHandler{
 		showtimeRepo: repo,
 		redis:        rdb,
+		hub:          hub,
 	}
 }
 
@@ -71,9 +74,22 @@ func (h *BookingHandler) LockSeats(c *gin.Context) {
 	// 2. Update MongoDB status to LOCKED
 	err = h.showtimeRepo.UpdateSeatStatus(ctx, showtimeID, req.SeatIDs, model.SeatLocked, userID)
 	if err != nil {
+		// Rollback Redis locks if MongoDB fails
+		for _, seatID := range req.SeatIDs {
+			lockKey := fmt.Sprintf("lock:showtime:%s:seat:%s", showtimeIDStr, seatID)
+			h.redis.Del(ctx, lockKey)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update seat status"})
 		return
 	}
+
+	// 3. Broadcast to all clients
+	h.hub.Broadcast(websocket.SeatUpdate{
+		ShowtimeID: showtimeIDStr,
+		SeatIDs:    req.SeatIDs,
+		Status:     string(model.SeatLocked),
+		LockedBy:   userID,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Seats locked successfully"})
 }
@@ -111,6 +127,13 @@ func (h *BookingHandler) UnlockSeats(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to release seats"})
 		return
 	}
+
+	// 3. Broadcast to all clients
+	h.hub.Broadcast(websocket.SeatUpdate{
+		ShowtimeID: showtimeIDStr,
+		SeatIDs:    req.SeatIDs,
+		Status:     string(model.SeatAvailable),
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Seats released successfully"})
 }
