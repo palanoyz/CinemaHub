@@ -37,6 +37,14 @@ func main() {
 
 	movies := []model.Movie{
 		{
+			Title:       "Your Name.",
+			Description: "High schoolers Mitsuha and Taki are complete strangers living separate lives. But one night, they suddenly switch places. Mitsuha wakes up in Taki's body, and he in hers. This bizarre occurrence continues to happen randomly, and the two must adjust their lives around each other.",
+			PosterURL:   "https://www.themoviedb.org/t/p/w1280/q719jXXEzOoYaps6babgKnONONX.jpg",
+			Duration:    106,
+			Genre:       []string{"Animation", "Romance", "Drama"},
+			Rating:      8.5,
+		},
+		{
 			Title:       "The Super Mario Galaxy Movie",
 			Description: "Having thwarted Bowser's previous plot to marry Princess Peach, Mario and Luigi now face a fresh threat in Bowser Jr., who is determined to liberate his father from captivity and restore the family legacy. Alongside companions new and old, the brothers travel across the stars to stop the young heir's crusade.",
 			PosterURL:   "https://www.themoviedb.org/t/p/w1280/eJGWx219ZcEMVQJhAgMiqo8tYY.jpg",
@@ -60,6 +68,14 @@ func main() {
 			Genre:       []string{"Animation", "Adventure", "Comedy", "Family", "Mystery"},
 			Rating:      7.7,
 		},
+		{
+			Title:       "Jujutsu Kaisen 0",
+			Description: "Yuta Okkotsu is a nervous high school student who is suffering from a serious problem—his childhood friend Rika has turned into a curse and won't leave him alone. Since Rika is no ordinary curse, his plight is noticed by Satoru Gojo, a teacher at Jujutsu High, a school where fledgling exorcists learn how to combat curses. Gojo convinces Yuta to enroll, but can he learn enough in time to confront the curse that haunts him?",
+			PosterURL:   "https://www.themoviedb.org/t/p/w1280/23oJaeBh0FDk2mQ2P240PU9Xxfh.jpg",
+			Duration:    105,
+			Genre:       []string{"Animation", "Adventure", "Comedy", "Family", "Mystery"},
+			Rating:      8.1,
+		},
 	}
 
 	for _, m := range movies {
@@ -74,8 +90,8 @@ func main() {
 			showtime := model.Showtime{
 				MovieID:   movieID,
 				HallName:  fmt.Sprintf("Hall %d", i),
-				StartTime: time.Now().Add(time.Duration(i*24) * time.Hour),
-				EndTime:   time.Now().Add(time.Duration(i*24+2) * time.Hour),
+				StartTime: time.Date(2026, time.June, 12, 11, 30, 0, 0, time.Local),
+				EndTime:   time.Date(2026, time.June, 12, 14, 0, 0, 0, time.Local),
 				Seats:     generateSeats(6, 8),
 			}
 			_, err := showtimesColl.InsertOne(context.Background(), showtime)
