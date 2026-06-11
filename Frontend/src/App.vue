@@ -93,6 +93,22 @@ nav {
   align-items: center;
 }
 
+.admin-link {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-color);
+  text-decoration: none;
+  background: rgba(229, 9, 20, 0.1);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+
+.admin-link:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
 .profile {
   display: flex;
   align-items: center;
