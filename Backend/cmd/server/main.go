@@ -34,7 +34,7 @@ func main() {
 	movieHandler := handler.NewMovieHandler(movieRepo)
 	showtimeHandler := handler.NewShowtimeHandler(showtimeRepo, rdb)
 	bookingHandler := handler.NewBookingHandler(showtimeRepo, bookingRepo, movieRepo, rdb, hub, rabbitConn)
-	adminHandler := handler.NewAdminHandler(bookingRepo)
+	adminHandler := handler.NewAdminHandler(bookingRepo, showtimeRepo, hub)
 
 	// Start Background Workers
 	websocket.StartBookingConsumer(rabbitConn)
@@ -91,6 +91,7 @@ func main() {
 			})
 		})
 		admin.GET("/bookings", adminHandler.ListBookings)
+		admin.DELETE("/bookings/:id", adminHandler.CancelBooking)
 	}
 
 	port := config.AppConfig.Port

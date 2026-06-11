@@ -10,6 +10,10 @@ const error = ref('')
 const filterMovie = ref('')
 const filterUser = ref('')
 
+// Modal state
+const showConfirmModal = ref(false)
+const bookingToCancel = ref<string | null>(null)
+
 async function fetchBookings() {
   loading.value = true
   error.value = ""
@@ -17,7 +21,7 @@ async function fetchBookings() {
     const params = new URLSearchParams()
     if (filterMovie.value) params.append('movie', filterMovie.value.trim())
     if (filterUser.value) params.append('user_id', filterUser.value.trim())
-    
+
     const res = await api.get(`/admin/bookings?${params.toString()}`)
     bookings.value = res.data
   } catch (err: unknown) {
@@ -50,10 +54,42 @@ watch([filterMovie, filterUser], () => {
 })
 
 onMounted(fetchBookings)
+
+function confirmCancel(id: string) {
+  bookingToCancel.value = id
+  showConfirmModal.value = true
+}
+
+async function cancelBooking() {
+  if (!bookingToCancel.value) return
+
+  try {
+    await api.delete(`/admin/bookings/${bookingToCancel.value}`)
+    showConfirmModal.value = false
+    bookingToCancel.value = null
+    fetchBookings() // Refresh list
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      alert(err.response?.data?.error || "Failed to cancel")
+    }
+  }
+}
 </script>
 
 <template>
   <div class="admin-dashboard container">
+    <!-- Custom Confirmation Modal -->
+    <div v-if="showConfirmModal" class="modal-overlay">
+      <div class="confirm-modal">
+        <h3>Confirm Cancellation</h3>
+        <p>Are you sure you want to cancel this booking? This action cannot be undone.</p>
+        <div class="modal-actions">
+          <button @click="showConfirmModal = false" class="cancel-btn">Keep</button>
+          <button @click="cancelBooking" class="delete-btn">Yes, Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <div class="header-section">
       <h1>Admin Dashboard</h1>
       <p>Manage and monitor all ticket bookings</p>
@@ -74,7 +110,7 @@ onMounted(fetchBookings)
     <div v-if="error" class="error-msg">{{ error }}</div>
 
     <div class="table-container shadow-md">
-      <table v-if="!loading">
+      <table v-if="!loading && bookings.length > 0">
         <thead>
           <tr>
             <th>Date</th>
@@ -83,6 +119,7 @@ onMounted(fetchBookings)
             <th>Seats</th>
             <th>User ID</th>
             <th>Total</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -95,22 +132,94 @@ onMounted(fetchBookings)
             </td>
             <td class="user-id" :title="booking.user_id">{{ booking.user_id }}</td>
             <td class="price">{{ booking.total_price }} THB</td>
-          </tr>
-          <tr v-if="bookings.length === 0">
-            <td colspan="6" class="empty">No bookings found matching your filters.</td>
+            <td>
+              <button @click="confirmCancel(booking.id)" class="action-cancel-btn">Cancel</button>
+            </td>
           </tr>
         </tbody>
       </table>
-      
+
       <div v-if="loading" class="table-loading">
         <div class="spinner"></div>
         <p>Loading database records...</p>
+      </div>
+
+      <div v-else-if="bookings.length === 0" class="table-empty-state">
+        <p>No bookings found matching your filters.</p>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.action-cancel-btn {
+  background: #fff;
+  color: #d32f2f;
+  border: 1px solid #d32f2f;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-cancel-btn:hover {
+  background: #d32f2f;
+  color: white;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-modal {
+  background: white;
+  padding: 30px;
+  border-radius: var(--radius-lg);
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+
+.confirm-modal h3 {
+  margin-top: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.cancel-btn {
+  background: #f0f0f0;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delete-btn {
+  background: #d32f2f;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .admin-dashboard {
   padding: 40px 20px;
 }
@@ -199,7 +308,9 @@ td {
   font-size: 14px;
 }
 
-.bold { font-weight: 700; }
+.bold {
+  font-weight: 700;
+}
 
 .seat-tag {
   background: #eee;
@@ -233,6 +344,13 @@ td {
 .table-loading {
   padding: 100px;
   text-align: center;
+}
+
+.table-empty-state {
+  padding: 100px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 1.1rem;
 }
 
 .error-msg {

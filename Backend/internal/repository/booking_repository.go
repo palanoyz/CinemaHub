@@ -27,6 +27,20 @@ func (r *BookingRepository) Create(ctx context.Context, booking *model.Booking) 
 	return nil
 }
 
+func (r *BookingRepository) GetByID(ctx context.Context, id bson.ObjectID) (*model.Booking, error) {
+	var booking model.Booking
+	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&booking)
+	if err != nil {
+		return nil, err
+	}
+	return &booking, nil
+}
+
+func (r *BookingRepository) Delete(ctx context.Context, id bson.ObjectID) error {
+	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+	return err
+}
+
 func (r *BookingRepository) GetAll(ctx context.Context, filter bson.M) ([]model.Booking, error) {
 	cursor, err := r.collection.Find(ctx, filter)
 	if err != nil {
