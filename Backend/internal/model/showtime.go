@@ -15,11 +15,12 @@ const (
 )
 
 type Seat struct {
-	ID     string     `bson:"id" json:"id"`         // e.g., "A1", "A2"
-	Row    string     `bson:"row" json:"row"`       // e.g., "A"
-	Number int        `bson:"number" json:"number"` // e.g., 1
-	Status SeatStatus `bson:"status" json:"status"`
-	Price  float64    `bson:"price" json:"price"`
+	ID       string     `bson:"id" json:"id"`         // e.g., "A1", "A2"
+	Row      string     `bson:"row" json:"row"`       // e.g., "A"
+	Number   int        `bson:"number" json:"number"` // e.g., 1
+	Status   SeatStatus `bson:"status" json:"status"`
+	Price    float64    `bson:"price" json:"price"`
+	LockedBy string     `bson:"locked_by,omitempty" json:"locked_by,omitempty"`
 }
 
 type Showtime struct {

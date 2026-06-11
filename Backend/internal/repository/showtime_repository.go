@@ -1,11 +1,12 @@
 package repository
 
 import (
-	"github.com/palanoyz/cinemahub/internal/model"
 	"context"
+	"github.com/palanoyz/cinemahub/internal/model"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type ShowtimeRepository struct {
@@ -51,4 +52,39 @@ func (r *ShowtimeRepository) Create(ctx context.Context, showtime *model.Showtim
 	}
 	showtime.ID = res.InsertedID.(bson.ObjectID)
 	return nil
+}
+
+func (r *ShowtimeRepository) UpdateSeatStatus(ctx context.Context, showtimeID bson.ObjectID, seatIDs []string, status model.SeatStatus, userID string) error {
+	filter := bson.M{
+		"_id":      showtimeID,
+		"seats.id": bson.M{"$in": seatIDs},
+	}
+
+	var update bson.M
+	if status == model.SeatAvailable {
+		// Clearing lock
+		update = bson.M{
+			"$set": bson.M{
+				"seats.$[elem].status": status,
+			},
+			"$unset": bson.M{
+				"seats.$[elem].locked_by": "",
+			},
+		}
+	} else {
+		// Setting lock/booking
+		update = bson.M{
+			"$set": bson.M{
+				"seats.$[elem].status":    status,
+				"seats.$[elem].locked_by": userID,
+			},
+		}
+	}
+
+	opts := options.UpdateMany().SetArrayFilters([]any{
+		bson.M{"elem.id": bson.M{"$in": seatIDs}},
+	})
+
+	_, err := r.collection.UpdateMany(ctx, filter, update, opts)
+	return err
 }

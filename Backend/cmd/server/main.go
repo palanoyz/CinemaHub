@@ -29,6 +29,7 @@ func main() {
 	healthHandler := handler.NewHealthHandler(db, rdb)
 	movieHandler := handler.NewMovieHandler(movieRepo)
 	showtimeHandler := handler.NewShowtimeHandler(showtimeRepo)
+	bookingHandler := handler.NewBookingHandler(showtimeRepo, rdb)
 
 	router := gin.Default()
 
@@ -62,6 +63,10 @@ func main() {
 				"message": "You are authenticated",
 			})
 		})
+
+		// Booking Routes
+		protected.POST("/showtimes/:id/lock", bookingHandler.LockSeats)
+		protected.POST("/showtimes/:id/unlock", bookingHandler.UnlockSeats)
 	}
 
 	port := config.AppConfig.Port
