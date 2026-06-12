@@ -12,7 +12,7 @@ type Config struct {
 	RedisAddr                  string
 	RabbitMQ_URL               string
 	FirebaseProjectID          string
-	FirebaseServiceAccountPath string
+	FirebaseServiceAccountJSON string
 	FrontendURL                string
 	Port                       string
 }
@@ -29,7 +29,7 @@ func LoadEnv() {
 		RedisAddr:                  getEnv("REDIS_ADDR", "localhost:6379"),
 		RabbitMQ_URL:               getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
 		FirebaseProjectID:          getEnv("FIREBASE_PROJECT_ID", ""),
-		FirebaseServiceAccountPath: getEnv("FIREBASE_SERVICE_ACCOUNT_PATH", ""),
+		FirebaseServiceAccountJSON: getEnv("FIREBASE_SERVICE_ACCOUNT_JSON", ""),
 		FrontendURL:                getEnv("FRONTEND_URL", "http://localhost:5173"),
 		Port:                       getEnv("PORT", "8080"),
 	}

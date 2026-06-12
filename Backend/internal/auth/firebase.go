@@ -1,12 +1,12 @@
 package auth
 
 import (
-	"github.com/palanoyz/cinemahub/internal/config"
 	"context"
 	"log"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
+	"github.com/palanoyz/cinemahub/internal/config"
 	"google.golang.org/api/option"
 )
 
@@ -14,9 +14,14 @@ var AuthClient *auth.Client
 
 func InitFirebase() {
 	projectID := config.AppConfig.FirebaseProjectID
-	serviceAccountPath := config.AppConfig.FirebaseServiceAccountPath
+	serviceAccountJSON := config.AppConfig.FirebaseServiceAccountJSON
 
-	opt := option.WithAuthCredentialsFile(option.ServiceAccount, serviceAccountPath)
+	if projectID == "" || serviceAccountJSON == "" {
+		log.Fatal("FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_JSON must be set in .env")
+	}
+
+	opt := option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(serviceAccountJSON))
+
 	config := &firebase.Config{ProjectID: projectID}
 
 	app, err := firebase.NewApp(context.Background(), config, opt)
@@ -30,5 +35,5 @@ func InitFirebase() {
 	}
 
 	AuthClient = client
-	log.Println("Firebase Admin SDK initialized successfully")
+	log.Println("Firebase Admin SDK initialized successfully using JSON string")
 }
