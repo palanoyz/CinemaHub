@@ -101,7 +101,6 @@ Prevent **Double Booking** by implement a **Distributed Lock** using Redis:
 ### 1. Environment Setup
 - Clone the repository.
 - Create a `.env` file in the root directory (based on `.env.example`).
-- **Place Firebase Config**: Put your `firebase-service-account.json` into `Backend/configs/`.
 
 ### 2. Deploy with Docker
 Run the following command to build and start the application:
